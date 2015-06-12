@@ -1,0 +1,60 @@
+CHOOSE EXAMPLES:
+
+case [Parameters].[Choose Dimension]
+when 'Service Channel' then [service_channel]
+when 'Segmentation Group' then [segmentation]
+when 'Channel SLA' then [channel_SLA]
+when 'Language' then [locale]
+when 'Game' then [game]
+when 'Transaction Type' then [transaction_type]
+when 'Default Queue' then [Default Queue]
+when 'Queue Divisions' then [Queue Divisions]
+when 'Social Network' then [social_network]
+when 'Disposition' then [disposition]
+when 'Category Level 1' then [Category Level 1]
+when 'Category Level 2' then [Category Level 2]
+when 'Category Level 3' then [Category Level 3]
+when 'Jira' then [Jira]
+when 'Status' then [Status]
+when 'Overall' then [Overall]
+when 'Queue Divisions' then [Queue Divisions]
+when 'Category Type' then [ZRM_Category_Type]
+when 'ZRM Category' then [ZRM_Category]
+else [Overall]
+end
+
+
+DATE LEVEL:
+
+IF [Parameters].[Date Level]="Year" THEN DATE(DATETRUNC('year',[date])) ELSEIF 
+[Parameters].[Date Level]="Quarter" THEN DATE(DATETRUNC('quarter',[date])) ELSEIF
+[Parameters].[Date Level]="Month" THEN DATE(DATETRUNC('month',[date])) ELSEIF
+[Parameters].[Date Level]="Week" THEN DATE(DATETRUNC('week',[Choose Week ending])) ELSEIF
+[Parameters].[Date Level]="Day" THEN DATE(DATETRUNC('day',[date])) END
+
+case [Week ending]
+when 'Monday' then [Monday]
+when 'Tuesday' then [Tuesday]
+when 'Wednesday' then [Wednesday]
+when 'Thursday' then [Thursday]
+when 'Friday' then [Friday]
+when 'Saturday' then [Saturday]
+when 'Sunday' then [Sunday]
+else 
+[Thursday]
+end
+
+
+MONDAY: 	DATEADD('day',12,DATETRUNC('week',(DATEADD('day',-2,[date]))))
+TUESDAY:	DATEADD('day',12,DATETRUNC('week',(DATEADD('day',-3,[date]))))
+WEDNESDAY:	DATEADD('day',12,DATETRUNC('week',(DATEADD('day',-4,[date]))))
+THURSDAY:	DATEADD('day',12,DATETRUNC('week',(DATEADD('day',-5,[date]))))
+FRIDAY: 	DATEADD('day',12,DATETRUNC('week',(DATEADD('day',-6,[date]))))
+SATURDAY: 	DATEADD('day',12,DATETRUNC('week',(DATEADD('day',-0,[date]))))
+SUNDAY:		DATEADD('day',12,DATETRUNC('week',(DATEADD('day',-1,[date]))))
+
+SURVEY RATIO: Sum([Survey Count]) / Sum([Volume - New])
+
+
+
+
