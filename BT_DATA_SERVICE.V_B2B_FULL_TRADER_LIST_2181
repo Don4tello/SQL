@@ -1,0 +1,25 @@
+CREATE OR REPLACE FORCE VIEW "BT_DATA_SERVICE"."V_B2B_FULL_TRADER_LIST_2181" ("registration_Date", "VOUCHER_CODE", "digitmsisdn", "REGION", "ZONE", "DISTRIBUTOR", "SALESREP", "DMS_CODE", "STORE_NAME") AS 
+SELECT
+e.create_Date as registration_Date,
+S.BT_FULL_STORE_CODE AS BT_VOUCHER,
+'*****'||(substr(e.msisdn,7)) as digitmsisdn,
+initcap(R.REGION_NAME) as region,
+initcap(D.ZONE_NAME) as zone,
+initcap(D.DISTRIBUTOR_NAME) as distributor, 
+SR.SALESREP as salesrep,
+L.SP_CODE_CHAR AS DMS_CODE,
+S.STORE_NAME AS STORE_NAME
+     FROM mis_interim.COL_2181_STORES S
+     JOIN mis_interim.COL_2181_BT_SPRING_LINKAGES L
+       ON S.BT_FULL_STORE_CODE = L.BT_VOUCHER
+LEFT JOIN mis_interim.COL_2181_SALES_REPS SR
+       ON S.BT_FULL_STORE_CODE = SR.BT_FULL_STORE_CODE  
+     JOIN mis_interim.COL_2181_DISTRIBUTORS D
+       ON D.DIST_CODE = L.DIST_CODE
+     JOIN mis_interim.COL_2181_REGIONS R 
+       ON R.REGION_ID=D.REGION_ID
+left join bt_dwh.t_fact_entries e
+on to_char(s.BT_FULL_STORE_CODE) = e.voucher_code and (ENTRY_STATUS = 0 AND ERROR_CODE = 0
+OR e.ENTRY_STATUS = 0 AND e.ERROR_CODE = -15
+OR e.ENTRY_STATUS = -1 AND e.ERROR_CODE = -9)                
+AND e.F_TYPE = 'N'
