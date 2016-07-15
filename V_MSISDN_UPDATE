@@ -1,0 +1,51 @@
+Select  
+  registration_date,
+  voucher_code as voucher_code_entered,
+  digitmsisdn,
+  cdstore_code as cleaned_up_voucher_code,
+  region,
+  zone,
+  distributor,
+  salesrep,
+  sp_code_char as dms_code,
+  STORE_NAME
+  from 
+  (select 
+create_Date as registration_date,
+voucher_code,
+'*****'||(substr(msisdn,7)) as digitmsisdn,
+msisdn,
+trim(replace(replace(replace(lower(voucher_code),'actualizar',''),'actualizar',''),'.','')) as cdstore_code
+from 
+bt_dwh.t_fact_entries
+where 
+campaign_id = '2535' and
+(ENTRY_STATUS = 0 AND ERROR_CODE = 0
+OR ENTRY_STATUS = 0 AND ERROR_CODE = -15
+OR ENTRY_STATUS = -1 AND ERROR_CODE = -9)                 
+
+
+and f_type = 'N') a 
+left join  ( SELECT
+S.BT_FULL_STORE_CODE AS BT_VOUCHER,
+S.STORE_NAME AS STORE_NAME,
+L.SP_CODE_CHAR AS DMS_CODE,
+R.REGION_ID as region_id,
+initcap(R.REGION_NAME) as region,
+L.DIST_CODE as dist_code,
+initcap(D.DISTRIBUTOR_NAME) as distributor, 
+initcap(D.ZONE_NAME) as zone,
+L.SPRING_DIST_CODE,
+SR.SALESREP as salesrep,
+l.sp_code_char,
+L.STORE_ACTIVE
+     FROM mis_interim.COL_2181_STORES S
+     JOIN mis_interim.COL_2181_BT_SPRING_LINKAGES L
+       ON S.BT_FULL_STORE_CODE = L.BT_VOUCHER
+LEFT JOIN mis_interim.COL_2181_SALES_REPS SR
+       ON S.BT_FULL_STORE_CODE = SR.BT_FULL_STORE_CODE  
+     JOIN mis_interim.COL_2181_DISTRIBUTORS D
+       ON D.DIST_CODE = L.DIST_CODE
+     JOIN mis_interim.COL_2181_REGIONS R 
+       ON R.REGION_ID=D.REGION_ID) b
+on a.cdstore_code= to_char(b.bt_voucher)
