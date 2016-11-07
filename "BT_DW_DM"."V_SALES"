@@ -1,0 +1,100 @@
+
+  CREATE OR REPLACE FORCE VIEW "BT_DW_DM"."V_SALES" ("CMS_CAMPAIGN_ID", "BUSINESS_PROFILE_ID", "SALE_DATE", "SKU", "DIVISION", "SUBDIVISION", "BRAND", "CATEGORY", "RANGE", "PRODUCT", "VALUE", "VOLUME", "PRODUCT_ID", "INVOICE", "SEGMENTATION", "CURRENCY") AS 
+  Select
+   CAMPAIGN_ID
+  ,BUSINESS_PROFILE_ID
+  ,sale_date
+  ,SKU
+  ,DIVISION
+  ,SUBDIVISION
+  ,BRAND
+  ,CATEGORY
+  ,RANGE
+  ,PRODUCT
+  ,value
+  ,units as volume
+  ,product_id
+  ,invoice
+  ,case when rank <= traders * 25 / 100 then 'Top 25%' 
+when rank<= traders* 75 / 100 then '25%-75%' ELSE
+'Bottom 25%' END as Segmentation
+,currency
+from
+(Select
+   CAMPAIGN_ID
+  ,BUSINESS_PROFILE_ID
+  ,sale_date
+  ,SKU
+  ,DIVISION
+  ,SUBDIVISION
+  ,BRAND
+  ,CATEGORY
+  ,RANGE
+  ,PRODUCT
+  ,value
+  ,units
+  ,product_id
+  ,invoice
+  ,Cumulative_trader
+  ,dense_rank() OVER (PARTITION BY CAMPAIGN_ID ORDER BY cumulative_trader DESC) RANK
+  ,count(distinct business_profile_id) over (PARTITION BY CAMPAIGN_ID) TRADERS
+  ,currency
+from
+
+(Select 
+  a.CAMPAIGN_ID,
+  a.BUSINESS_PROFILE_ID,
+  a.sale_date,
+  a.SKU,
+  a.DIVISION
+  ,a.SUBDIVISION
+  ,a.BRAND
+  ,a.CATEGORY
+  ,a.RANGE
+  ,a.PRODUCT
+  ,value
+  ,units
+  ,product_id
+  ,invoice
+  ,Sum(value) OVER (PARTITION BY business_profile_id) as Cumulative_trader
+  ,currency
+  from 
+(SELECT 
+  c.CAMPAIGN_ID,
+  c.BUSINESS_PROFILE_ID,
+  c.sale_date,
+  d.SKU,
+  d.DIVISION
+  ,d.SUBDIVISION
+  ,d.BRAND
+  ,d.CATEGORY
+  ,d.RANGE
+  ,d.PRODUCT
+  ,replace(to_char(c.sale_date),'-','')||business_profile_id as invoice
+  ,Sum(c.value) as value
+  ,Sum(c.units) as units
+  ,c.sku as product_id
+  ,campaigns.currency
+  
+from 
+mv_daily_sale c
+inner join
+T_SKU_NAME d on c.sku=d.product_id and c.campaign_id=d.cms_campaign_id
+left join t_dim_campaigns campaigns on c.campaign_id=campaigns.campaign_id 
+group by 
+  c.CAMPAIGN_ID,
+  c.BUSINESS_PROFILE_ID,
+  c.sale_date,
+  d.SKU,
+  d.DIVISION
+  ,d.SUBDIVISION
+  ,d.BRAND
+  ,d.CATEGORY
+  ,d.RANGE
+  ,d.PRODUCT
+  ,c.sku
+  ,campaigns.currency
+
+) a
+)
+);
