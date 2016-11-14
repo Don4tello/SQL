@@ -1,0 +1,174 @@
+
+  CREATE MATERIALIZED VIEW "BT_DW_DM"."MV_B2B_OFFER_REPORT" ("TARGET_AMOUNT", "RULE_GROUP_ID", "OFFER", "OFFER_DATE", "TARGET_TYPE", "OFFER_TARGET_ID", "OFFER_TARGET", "CMS_CAMPAIGN_ID", "COHORT_NAME", "COHORT_VALUE", "COHORT_ID", "BUSINESS_PROFILE_ID", "REGISTERED", "LOGICAL_OPERATOR", "OFFER_TARGETS", "MEASUREMENT_TYPE", "RULE_GROUP_TYPE", "RULE_GROUP_TARGET_TYPE", "SALE_DATE", "OFFER_COUNT", "OFFER_AMOUNT")
+  ORGANIZATION HEAP PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 
+ NOCOMPRESS LOGGING
+  STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1
+  BUFFER_POOL DEFAULT FLASH_CACHE DEFAULT CELL_FLASH_CACHE DEFAULT)
+  TABLESPACE "BT_DW_DM_DATA" 
+  BUILD DEFERRED
+  USING INDEX 
+  REFRESH COMPLETE ON DEMAND
+  USING DEFAULT LOCAL ROLLBACK SEGMENT
+  USING ENFORCED CONSTRAINTS DISABLE QUERY REWRITE
+  AS Select
+  
+  a.TARGET_AMOUNT,
+  a.RULE_GROUP_ID,
+  a.OFFER,
+  a.OFFER_DATE,
+  a.TARGET_TYPE,
+  a.OFFER_TARGET_ID,
+  a.OFFER_TARGET,
+  a.CMS_CAMPAIGN_ID,
+  a.COHORT_NAME,
+  a.COHORT_VALUE,
+  a.COHORT_ID,
+  a.business_profile_id,
+  a.registered,
+  a.LOGICAL_OPERATOR,
+  a.OFFER_TARGETS,
+  a.MEASUREMENT_TYPE,
+  a.RULE_GROUP_TYPE,
+  a.RULE_GROUP_TARGET_TYPE,
+  a.sale_date,
+a.offer_count,
+a.offer_amount
+ from (
+  Select
+  
+  a.TARGET_AMOUNT,
+  a.RULE_GROUP_ID,
+  a.OFFER,
+  a.OFFER_DATE,
+  a.TARGET_TYPE,
+  a.OFFER_TARGET_ID,
+  a.OFFER_TARGET,
+  a.CMS_CAMPAIGN_ID,
+  a.COHORT_NAME,
+  a.COHORT_VALUE,
+  a.COHORT_ID,
+  a.business_profile_id,
+  a.registered,
+  a.LOGICAL_OPERATOR,
+  a.OFFER_TARGETS,
+  a.MEASUREMENT_TYPE,
+  a.RULE_GROUP_TYPE,
+  a.RULE_GROUP_TARGET_TYPE,
+  CASE WHEN a.target_type = 'SKU' AND a.OFFER_TARGET_ID=sales.promo_code then sale_date
+     WHEN a.target_type = 'CATEGORY' AND a.offer_target = sales.brand THEN sale_date
+     WHEN a.target_type = 'CATEGORY' AND a.offer_target = sales.category THEN sale_date
+     WHEN a.target_type = 'CATEGORY' AND a.offer_target = sales.range THEN sale_date
+     WHEN a.target_type = 'CATEGORY' AND a.offer_target = sales.product THEN sale_date
+     END as sale_date,
+SUM(
+CASE WHEN a.target_type = 'SKU' AND a.OFFER_TARGET_ID=sales.promo_code then units
+     WHEN a.target_type = 'CATEGORY' AND a.offer_target = sales.brand THEN units
+     WHEN a.target_type = 'CATEGORY' AND a.offer_target = sales.category THEN units
+     WHEN a.target_type = 'CATEGORY' AND a.offer_target = sales.range THEN units
+     WHEN a.target_type = 'CATEGORY' AND a.offer_target = sales.product THEN units
+     END) as offer_count,
+     SUM(
+CASE WHEN a.target_type = 'SKU' AND a.OFFER_TARGET_ID=sales.promo_code then value
+     WHEN a.target_type = 'CATEGORY' AND a.offer_target = sales.brand THEN value
+     WHEN a.target_type = 'CATEGORY' AND a.offer_target = sales.category THEN value
+     WHEN a.target_type = 'CATEGORY' AND a.offer_target = sales.range THEN value
+     WHEN a.target_type = 'CATEGORY' AND a.offer_target = sales.product THEN value
+     END) as offer_amount
+from 
+
+(SELECT 
+  r.TARGET_AMOUNT,
+  r.RULE_GROUP_ID,
+  r.OFFER,
+  r.OFFER_DATE,
+  r.TARGET_TYPE,
+  r.OFFER_TARGET_ID,
+  r.OFFER_TARGET,
+  r.CMS_CAMPAIGN_ID,
+  r.COHORT_RULE_ID,
+  r.COHORT_NAME,
+  r.COHORT_VALUE,
+  r.COHORT_ID,
+  t.business_profile_id,
+  t.registered,
+  r.LOGICAL_OPERATOR,
+  r.OFFER_TARGETS,
+  r.MEASUREMENT_TYPE,
+  r.RULE_GROUP_TYPE,
+  r.RULE_GROUP_TARGET_TYPE
+FROM V_B2B_OFFER_RULES r
+left join MV_BUSINESS_PROFILE_ATTRIBUTE b on r.cohort_id = b.attribute_value_id
+left join v_b2b_traderlist t on r.cms_campaign_id = t.cms_campaign_id 
+where cohort_rule_id is null 
+and  rule_group_id in (
+Select rule_group_id
+from t_b2b_current_offers
+
+)
+union all
+SELECT 
+  r.TARGET_AMOUNT,
+  r.RULE_GROUP_ID,
+  r.OFFER,
+  r.OFFER_DATE,
+  r.TARGET_TYPE,
+  r.OFFER_TARGET_ID,
+  r.OFFER_TARGET,
+  r.CMS_CAMPAIGN_ID,
+  r.COHORT_RULE_ID,
+  r.COHORT_NAME,
+  r.COHORT_VALUE,
+  r.COHORT_ID,
+  t.business_profile_id,
+  t.registered,
+  r.LOGICAL_OPERATOR,
+  r.OFFER_TARGETS,
+  r.MEASUREMENT_TYPE,
+  r.RULE_GROUP_TYPE,
+  r.RULE_GROUP_TARGET_TYPE
+FROM MV_B2B_OFFERS r
+left join MV_BUSINESS_PROFILE_ATTRIBUTE b on r.cohort_id = b.attribute_value_id
+left join v_b2b_traderlist t on r.cms_campaign_id = t.cms_campaign_id  and t.business_profile_id = b.business_profile_id
+where cohort_rule_id is not null
+and  rule_group_id in (
+Select rule_group_id
+from t_b2b_current_offers
+
+)
+) a
+
+inner join v_daily_sales sales on a.cms_campaign_id = sales.cms_campaign_id and a.business_profile_id = sales.business_profile_id and sales.value>0 and trunc(sales.sale_date) BETWEEN a.OFFER_DATE -60 and  a.OFFER_DATE + 60
+
+
+group by 
+
+  a.TARGET_AMOUNT,
+  a.RULE_GROUP_ID,
+  a.OFFER,
+  a.OFFER_DATE,
+  a.TARGET_TYPE,
+  a.OFFER_TARGET_ID,
+  a.OFFER_TARGET,
+  a.CMS_CAMPAIGN_ID,
+  a.COHORT_RULE_ID,
+  a.COHORT_NAME,
+  a.COHORT_VALUE,
+  a.COHORT_ID,
+  a.business_profile_id,
+  a.registered,
+  a.LOGICAL_OPERATOR,
+  a.OFFER_TARGETS,
+  a.MEASUREMENT_TYPE,
+  a.RULE_GROUP_TYPE,
+  a.RULE_GROUP_TARGET_TYPE,
+  CASE WHEN a.target_type = 'SKU' AND a.OFFER_TARGET_ID=sales.promo_code then sale_date
+     WHEN a.target_type = 'CATEGORY' AND a.offer_target = sales.brand THEN sale_date
+     WHEN a.target_type = 'CATEGORY' AND a.offer_target = sales.category THEN sale_date
+     WHEN a.target_type = 'CATEGORY' AND a.offer_target = sales.range THEN sale_date
+     WHEN a.target_type = 'CATEGORY' AND a.offer_target = sales.product THEN sale_date
+     END
+     )  a
+     where sale_date is not null;
+
+   COMMENT ON MATERIALIZED VIEW "BT_DW_DM"."MV_B2B_OFFER_REPORT"  IS 'snapshot table for snapshot BT_DW_DM.MV_B2B_OFFER_REPORT';
