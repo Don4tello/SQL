@@ -1,0 +1,68 @@
+
+  CREATE OR REPLACE FORCE VIEW "BT_DW_DM"."V_B2B_OFFERS" ("CUSTOMER_REF", "VOUCHER", "TRADER", "MSISDN", "REGISTERED", "REGISTRATION_DATE", "OPERATOR", "CONTRACT_STATUS", "CAMPAIGN", "CLIENT", "COUNTRY", "STORE_TYPE", "REGION", "COUNTY", "AREA", "CITY", "MANAGER", "SUPERVISOR", "SALES_REP", "DISTRIBUTOR", "CAMPAIGN_SPEC_1", "CAMPAIGN_SPEC_2", "CAMPAIGN_SPEC_3", "REPORTABLE", "EXECUTIVE", "BUSINESS_PROFILE_ID", "CMS_CAMPAIGN_ID", "COMPLIANT", "TARGET_REACHED", "OFFER", "COHORT_VALUE", "DATE_SEND", "ROUTE", "ROUTE_NUMBER", "OFFER_TYPE", "PROFILE_ID") AS 
+  SELECT 
+  CUSTOMER_REF,
+  VOUCHER,
+  TRADER,
+  MSISDN,
+  b.REGISTERED,
+  REGISTRATION_DATE,
+  OPERATOR,
+  CONTRACT_STATUS,
+  CAMPAIGN,
+  CLIENT,
+  COUNTRY,
+  STORE_TYPE,
+  REGION,
+  COUNTY,
+  AREA,
+  CITY,
+  MANAGER,
+  SUPERVISOR,
+  SALES_REP,
+  DISTRIBUTOR,
+  CAMPAIGN_SPEC_1,
+  CAMPAIGN_SPEC_2,
+  CAMPAIGN_SPEC_3,
+  REPORTABLE,
+  EXECUTIVE,
+  a.business_profile_id,
+  a.cms_campaign_id,
+  a.compliant,
+  a.target_reached,
+  a.offer,
+  nvl(string_value, 'Any') as cohort_value,
+  coalesce(messages.date_send,motivation.date_send,offer_date) as date_send,
+  ROUTE,
+  ROUTE_NUMBER,
+  case when lower(a.offer) like '%test%' then 'Test' else 'Offer' end as offer_type,
+  PROFILE_ID
+  
+FROM 
+(select 
+name,
+b.rule_group_id,
+a.rule_product_id,
+a.business_profile_id,
+a.compliant,
+a.target_reached,
+a.dm_permission_when_run,
+c.sales_period_id,
+c.name as offer,
+d.string_value,
+c.cms_campaign_id,
+c.create_date as offer_date
+from 
+BT_B2BL_MV.MV_BUSINESS_PROFILE_PRODUCT a 
+inner join BT_B2BL_MV.mv_rule_reward b on a.rule_product_id=b.rule_product_id
+inner join BT_B2BL_MV.mv_rule_group c on c.id=b.rule_group_id
+left join mv_rule_group_attribute_value e on e.rule_group_id=c.id
+left join MV_ATTRIBUTE_VALUE d on e.attribute_value_id=d.id
+
+) a
+
+inner join V_B2B_TRADERLIST b on a.business_profile_id = b.business_profile_id and a.cms_campaign_id = b.cms_campaign_id
+left join v_b2b_offer_messages messages on a.cms_campaign_id = messages.cms_campaign_id and a.rule_group_id = messages.rule_group_id and messages.message_type = 'TARGET'
+left join v_b2b_offer_messages motivation on a.cms_campaign_id = motivation.cms_campaign_id and a.rule_group_id = motivation.rule_group_id and motivation.message_type = 'POSITIVE_MOTIVATION'
+--where rownum < 10
+;
