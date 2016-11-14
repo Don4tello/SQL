@@ -1,0 +1,40 @@
+
+  CREATE OR REPLACE FORCE VIEW "BT_DW_DM"."V_B2B_OFFER_MESSAGES" ("CMS_CAMPAIGN_ID", "OFFER", "RULE_GROUP_ID", "RULE_PRODUCT_ID", "MESSAGE_TYPE", "MESSAGE", "DATE_SEND", "MESSAGES_SEND", "REGISTERED") AS 
+  (
+SELECT b.cms_campaign_id
+    ,b.name as offer
+    ,rule_group_id
+    ,rule_product_id
+    ,message_type
+    ,message_body
+    ,date_send
+    ,messages_send
+    ,registered  
+
+FROM (SELECT 
+          COALESCE(b.rule_group_id, c.rule_group_id, d.rule_group_id) AS rule_group_id
+          ,coalesce(c.message_template_id,b.above_message_template_id,b.below_message_template_id,d.above_message_template_id,d.below_message_template_id) as message_template_id
+          ,a.rule_product_id
+          ,a.message_type
+          ,t.registered
+          ,MIN(trunc(a.create_date)) AS date_send
+          ,COUNT(distinct a.business_profile_id) AS messages_send
+      FROM mv_message_out a
+        LEFT JOIN mv_rule_motivation_message b ON a.rule_product_id = b.rule_product_id
+        LEFT JOIN mv_rule_target_message c ON a.rule_product_id = c.rule_product_id
+        LEFT JOIN mv_rule_reward d ON a.rule_product_id = d.rule_product_id 
+        LEFT JOIN mv_rule_product e ON a.rule_product_id = e.id 
+        LEFT JOIN v_b2b_traderlist t ON a.business_profile_id = t.business_profile_id
+      WHERE message_status = 0 -- -1 NOT SENT = CONTRACT_STATUS_NOT_OPT_IN
+        AND e.rule_status = 'COMPLETE' -- Message has been send out
+        AND registered IS NOT NULL -- remove inactive campaigns
+      GROUP BY 
+      coalesce(c.message_template_id,b.above_message_template_id,b.below_message_template_id,d.above_message_template_id,d.below_message_template_id)
+      ,COALESCE(b.rule_group_id, c.rule_group_id, d.rule_group_id)
+          ,a.rule_product_id
+          ,a.message_type
+          ,t.registered
+      ) a
+  LEFT JOIN mv_rule_group b ON a.rule_group_id = b.id
+  LEFT JOIN MV_MESSAGE_TEMPLATE t on t.id=a.message_Template_id
+  );
