@@ -1,0 +1,472 @@
+
+  CREATE OR REPLACE FORCE VIEW "BT_DW_DM"."V_B2B_TRADER_ATTRIBUTES" ("BUSINESS_PROFILE_ID", "CMS_CAMPAIGN_ID", "STORE_TYPE", "REGION", "COUNTY", "AREA", "CITY", "EXECUTIVE", "MANAGER", "SUPERVISOR", "SALES_REP", "DISTRIBUTOR", "CAMPAIGN_SPEC_1", "CAMPAIGN_SPEC_2", "CAMPAIGN_SPEC_3", "ROUTE", "ROUTE_NUMBER") AS 
+  select 
+business_profile_id,
+cms_campaign_id,
+store_type,
+region,
+county,
+area,
+city,
+executive,
+manager,
+supervisor,
+sales_rep,
+distributor,
+CAMPAIGN_SPEC_1, 
+CAMPAIGN_SPEC_2, 
+CAMPAIGN_SPEC_3,
+ROUTE,
+ROUTE_NUMBER
+
+from 
+(select a.business_profile_id,lower(name) as category_name,cms_campaign_id,string_value from BT_B2BL_MV.MV_BUSINESS_PROFILE_ATTRIBUTE a
+inner join BT_B2BL_MV.MV_ATTRIBUTE c 
+on a.attribute_id = c.id
+inner join BT_B2BL_MV.MV_ATTRIBUTE_VALUE d on a.attribute_value_id = d.id
+)
+
+pivot(max(string_value) for category_name in 
+(
+'store type' as store_type,
+'region' as region,
+'domain' AS county,
+'area' AS area,
+'city' as city,
+'executive' as executive,
+'manager' as manager,
+'supervisor' as supervisor,
+'sales_rep' as sales_rep,
+'distributor' as distributor,
+'trade' AS CAMPAIGN_SPEC_1, 
+'district' AS CAMPAIGN_SPEC_2,
+'domaincity' AS CAMPAIGN_SPEC_3,
+'Route' as ROUTE,
+'Route_number' as ROUTE_NUMBER
+))
+where cms_campaign_id = 2422
+union all
+select 
+business_profile_id,
+cms_campaign_id,
+store_type,
+region,
+county,
+area,
+city,
+executive,
+manager,
+supervisor,
+sales_rep,
+distributor,
+CAMPAIGN_SPEC_1, 
+CAMPAIGN_SPEC_2, 
+CAMPAIGN_SPEC_3,
+ROUTE,
+ROUTE_NUMBER
+
+from 
+(select a.business_profile_id,lower(name) as category_name,cms_campaign_id,string_value from BT_B2BL_MV.MV_BUSINESS_PROFILE_ATTRIBUTE a
+inner join BT_B2BL_MV.MV_ATTRIBUTE c 
+on a.attribute_id = c.id
+inner join BT_B2BL_MV.MV_ATTRIBUTE_VALUE d on a.attribute_value_id = d.id
+)
+
+pivot(max(string_value) for category_name in 
+(
+'tipo de negocio' as store_type,
+'region' as region,
+'estado' AS county,
+'area' AS area,
+'ciudad' as city,
+'executive' as executive,
+'ejecutivo ul' as manager,
+'asesor ul'  as supervisor,
+'nombre gerente' as sales_rep,
+'nombre de distribuidor' as distributor,
+'trade' AS CAMPAIGN_SPEC_1, 
+'district' AS CAMPAIGN_SPEC_2,
+'domaincity' AS CAMPAIGN_SPEC_3,
+'Route' as ROUTE,
+'Route_number' as ROUTE_NUMBER
+
+))
+where cms_campaign_id = 2495
+
+union all
+select 
+business_profile_id,
+cms_campaign_id,
+store_type,
+region,
+county,
+area,
+city,
+executive,
+manager,
+supervisor,
+sales_rep,
+distributor,
+CAMPAIGN_SPEC_1, 
+CAMPAIGN_SPEC_2, 
+CAMPAIGN_SPEC_3,
+ROUTE,
+ROUTE_NUMBER
+
+from 
+(select a.business_profile_id,lower(name) as category_name,cms_campaign_id,string_value from BT_B2BL_MV.MV_BUSINESS_PROFILE_ATTRIBUTE a
+inner join BT_B2BL_MV.MV_ATTRIBUTE c 
+on a.attribute_id = c.id
+inner join BT_B2BL_MV.MV_ATTRIBUTE_VALUE d on a.attribute_value_id = d.id
+)
+
+pivot(max(string_value) for category_name in 
+(
+'customer type2' as store_type,
+'region' as region,
+'county' AS county,
+'area' AS area,
+'city' as city,
+'executive' as executive,
+'manager' as manager,
+'supervisor' as supervisor,
+'sales person' as sales_rep,
+'distributr' as distributor,
+'campaign_spec_1' AS CAMPAIGN_SPEC_1, 
+'campaign_spec_2' AS CAMPAIGN_SPEC_2,
+'campaign_spec_3' AS CAMPAIGN_SPEC_3,
+'sales route description' as ROUTE,
+'sales route' as ROUTE_NUMBER
+))
+where cms_campaign_id = 2502
+union all
+select 
+business_profile_id,
+cms_campaign_id,
+store_type,
+region,
+county,
+area,
+city,
+executive,
+manager,
+supervisor,
+sales_rep,
+distributor,
+CAMPAIGN_SPEC_1, 
+CAMPAIGN_SPEC_2, 
+CAMPAIGN_SPEC_3,
+ROUTE,
+ROUTE_NUMBER
+
+from 
+(select a.business_profile_id,lower(name) as category_name,cms_campaign_id,string_value from BT_B2BL_MV.MV_BUSINESS_PROFILE_ATTRIBUTE a
+inner join BT_B2BL_MV.MV_ATTRIBUTE c 
+on a.attribute_id = c.id
+inner join BT_B2BL_MV.MV_ATTRIBUTE_VALUE d on a.attribute_value_id = d.id
+)
+
+pivot(max(string_value) for category_name in 
+(
+
+'nmclassification' as store_type,
+'region' as region,
+'nmneighbourhood' AS county,
+'area' AS area,
+'city' as city,
+'sales rep 1' as executive,
+'sales rep 2' as manager,
+'sales rep 3' as supervisor,
+'sales rep 4' as sales_rep,
+'dsitribuidor' as distributor,
+'campaign_spec_1' AS CAMPAIGN_SPEC_1, 
+'campaign_spec_2' AS CAMPAIGN_SPEC_2,
+'campaign_spec_3' AS CAMPAIGN_SPEC_3,
+'Route' as ROUTE,
+'Route_number' as ROUTE_NUMBER
+
+
+))
+where cms_campaign_id = 2181
+union all
+select 
+business_profile_id,
+cms_campaign_id,
+store_type,
+region,
+county,
+area,
+city,
+executive,
+manager,
+supervisor,
+sales_rep,
+distributor,
+CAMPAIGN_SPEC_1, 
+CAMPAIGN_SPEC_2, 
+CAMPAIGN_SPEC_3,
+ROUTE,
+ROUTE_NUMBER
+
+from 
+(select a.business_profile_id,lower(name) as category_name,cms_campaign_id,string_value from BT_B2BL_MV.MV_BUSINESS_PROFILE_ATTRIBUTE a
+inner join BT_B2BL_MV.MV_ATTRIBUTE c 
+on a.attribute_id = c.id
+inner join BT_B2BL_MV.MV_ATTRIBUTE_VALUE d on a.attribute_value_id = d.id
+)
+
+pivot(max(string_value) for category_name in 
+(
+'store type' as store_type,
+'region' as region,
+'county' AS county,
+'area' AS area,
+'city' as city,
+'executive' as executive,
+'manager' as manager,
+'supervisor' as supervisor,
+'sales person' as sales_rep,
+'distributor' as distributor,
+'campaign_spec_1' AS CAMPAIGN_SPEC_1, 
+'campaign_spec_2' AS CAMPAIGN_SPEC_2,
+'campaign_spec_3' AS CAMPAIGN_SPEC_3,
+'Route' as ROUTE,
+'Route_number' as ROUTE_NUMBER
+))
+where cms_campaign_id = 2353
+union all
+select 
+business_profile_id,
+cms_campaign_id,
+store_type,
+region,
+county,
+area,
+city,
+executive,
+manager,
+supervisor,
+sales_rep,
+distributor,
+CAMPAIGN_SPEC_1, 
+CAMPAIGN_SPEC_2, 
+CAMPAIGN_SPEC_3,
+ROUTE,
+ROUTE_NUMBER
+
+from 
+(select a.business_profile_id,lower(name) as category_name,cms_campaign_id,string_value from BT_B2BL_MV.MV_BUSINESS_PROFILE_ATTRIBUTE a
+inner join BT_B2BL_MV.MV_ATTRIBUTE c 
+on a.attribute_id = c.id
+inner join BT_B2BL_MV.MV_ATTRIBUTE_VALUE d on a.attribute_value_id = d.id
+)
+
+pivot(max(string_value) for category_name in 
+(
+'tipo de loja' as store_type,
+'region' as region,
+'county' AS county,
+'area' AS area,
+'city' as city,
+'executive' as executive,
+'manager' as manager,
+'supervisor' as supervisor,
+'sales person' as sales_rep,
+'distributor' as distributor,
+'address' AS CAMPAIGN_SPEC_1, 
+'frequência' AS CAMPAIGN_SPEC_2,
+'semana' AS CAMPAIGN_SPEC_3,
+'Route' as ROUTE,
+'Route_number' as ROUTE_NUMBER
+
+
+))
+where cms_campaign_id = 2532
+union all
+select 
+business_profile_id,
+cms_campaign_id,
+store_type,
+region,
+county,
+area,
+city,
+executive,
+manager,
+supervisor,
+sales_rep,
+distributor,
+CAMPAIGN_SPEC_1, 
+CAMPAIGN_SPEC_2, 
+CAMPAIGN_SPEC_3,
+ROUTE,
+ROUTE_NUMBER
+
+from 
+(select a.business_profile_id,lower(name) as category_name,cms_campaign_id,string_value from BT_B2BL_MV.MV_BUSINESS_PROFILE_ATTRIBUTE a
+inner join BT_B2BL_MV.MV_ATTRIBUTE c 
+on a.attribute_id = c.id
+inner join BT_B2BL_MV.MV_ATTRIBUTE_VALUE d on a.attribute_value_id = d.id
+)
+
+pivot(max(string_value) for category_name in 
+(
+'desarrollador' as store_type,
+'cuadrante' as region,
+'county' AS county,
+'colonia' AS area,
+'city' as city,
+'executive' as executive,
+'manager' as manager,
+'supervisor' as supervisor,
+'vendedor' as sales_rep,
+'distributor' as distributor,
+'día  de visita' AS CAMPAIGN_SPEC_1, 
+'placeholder' AS CAMPAIGN_SPEC_2,
+'placeholder' AS CAMPAIGN_SPEC_3,
+'Route' as ROUTE,
+'Route_number' as ROUTE_NUMBER
+
+))
+where cms_campaign_id = 2561
+union all
+select 
+business_profile_id,
+cms_campaign_id,
+store_type,
+region,
+county,
+area,
+city,
+executive,
+manager,
+supervisor,
+sales_rep,
+distributor,
+CAMPAIGN_SPEC_1, 
+CAMPAIGN_SPEC_2, 
+CAMPAIGN_SPEC_3,
+ROUTE,
+ROUTE_NUMBER
+
+from 
+(select a.business_profile_id,lower(name) as category_name,cms_campaign_id,string_value from BT_B2BL_MV.MV_BUSINESS_PROFILE_ATTRIBUTE a
+inner join BT_B2BL_MV.MV_ATTRIBUTE c 
+on a.attribute_id = c.id
+inner join BT_B2BL_MV.MV_ATTRIBUTE_VALUE d on a.attribute_value_id = d.id
+)
+
+pivot(max(string_value) for category_name in 
+(
+'tradertype' as store_type,
+'region' as region,
+'county' AS county,
+'colonia' AS area,
+'city' as city,
+'executive' as executive,
+'manager' as manager,
+'supervisor' as supervisor,
+'driver' as sales_rep,
+'distributor' as distributor,
+'Placeholder' AS CAMPAIGN_SPEC_1, 
+'Placeholder' AS CAMPAIGN_SPEC_2,
+'driver cell' AS CAMPAIGN_SPEC_3,
+'route area' as ROUTE,
+'route' as ROUTE_NUMBER
+
+))
+where cms_campaign_id = 2575
+union all
+select 
+business_profile_id,
+cms_campaign_id,
+store_type,
+region,
+county,
+area,
+city,
+executive,
+manager,
+supervisor,
+sales_rep,
+distributor,
+CAMPAIGN_SPEC_1, 
+CAMPAIGN_SPEC_2, 
+CAMPAIGN_SPEC_3,
+ROUTE,
+ROUTE_NUMBER
+
+from 
+(select a.business_profile_id,lower(name) as category_name,cms_campaign_id,string_value from BT_B2BL_MV.MV_BUSINESS_PROFILE_ATTRIBUTE a
+inner join BT_B2BL_MV.MV_ATTRIBUTE c 
+on a.attribute_id = c.id
+inner join BT_B2BL_MV.MV_ATTRIBUTE_VALUE d on a.attribute_value_id = d.id
+)
+
+pivot(max(string_value) for category_name in 
+(
+'segment' as store_type,
+'division' as region,
+'territory' AS county,
+'area' AS area,
+'city' as city,
+'executive' as executive,
+'manager' as manager,
+'Placeholder' as supervisor,
+'Placeholder' as sales_rep,
+'distributor' as distributor,
+'Placeholder' AS CAMPAIGN_SPEC_1, 
+'Placeholder' AS CAMPAIGN_SPEC_2,
+'Placeholder' AS CAMPAIGN_SPEC_3,
+'route' as ROUTE,
+'placeholder' as ROUTE_NUMBER
+
+))
+where cms_campaign_id = 2584
+union all
+select 
+business_profile_id,
+cms_campaign_id,
+store_type,
+region,
+county,
+area,
+city,
+executive,
+manager,
+supervisor,
+sales_rep,
+distributor,
+CAMPAIGN_SPEC_1, 
+CAMPAIGN_SPEC_2, 
+CAMPAIGN_SPEC_3,
+ROUTE,
+ROUTE_NUMBER
+
+from 
+(select a.business_profile_id,lower(name) as category_name,cms_campaign_id,string_value from BT_B2BL_MV.MV_BUSINESS_PROFILE_ATTRIBUTE a
+inner join BT_B2BL_MV.MV_ATTRIBUTE c 
+on a.attribute_id = c.id
+inner join BT_B2BL_MV.MV_ATTRIBUTE_VALUE d on a.attribute_value_id = d.id
+)
+
+pivot(max(string_value) for category_name in 
+(
+'store size' as store_type,
+'division' as region,
+'territory' AS county,
+'area' AS area,
+'city' as city,
+'executive' as executive,
+'manager' as manager,
+'supervisor' as supervisor,
+'placeholder' as sales_rep,
+'distributor' as distributor,
+'visit type' AS CAMPAIGN_SPEC_1, 
+'Placeholder' AS CAMPAIGN_SPEC_2,
+'Placeholder' AS CAMPAIGN_SPEC_3,
+'route ref' as ROUTE,
+'route ncb' as ROUTE_NUMBER
+
+))
+where cms_campaign_id = 2588;
