@@ -1,0 +1,124 @@
+
+  CREATE MATERIALIZED VIEW "BT_DW_DM"."MV_B2B_OFFERS" ("TARGET_AMOUNT", "RULE_GROUP_ID", "OFFER", "OFFER_DATE", "TARGET_TYPE", "OFFER_TARGET_ID", "OFFER_TARGET", "CMS_CAMPAIGN_ID", "COHORT_RULE_ID", "COHORT_NAME", "COHORT_VALUE", "COHORT_ID", "LOGICAL_OPERATOR", "MEASUREMENT_TYPE", "RULE_GROUP_TYPE", "RULE_GROUP_TARGET_TYPE", "OFFER_TARGETS")
+  ORGANIZATION HEAP PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 
+ NOCOMPRESS LOGGING
+  STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1
+  BUFFER_POOL DEFAULT FLASH_CACHE DEFAULT CELL_FLASH_CACHE DEFAULT)
+  TABLESPACE "BT_DW_DM_DATA" 
+  BUILD IMMEDIATE
+  USING INDEX 
+  REFRESH FORCE ON DEMAND
+  USING DEFAULT LOCAL ROLLBACK SEGMENT
+  USING ENFORCED CONSTRAINTS DISABLE QUERY REWRITE
+  AS Select 
+coalesce(o.target_amount,o.comparison_sales_units) as target_amount,
+o.rule_group_id,
+o.offer,
+o.offer_date,
+o.target_type,
+o.offer_target_id,
+coalesce(o.offer_target,o.offer_target_id) as offer_target,
+o.cms_campaign_id,
+cohort_rule_id,
+nvl(cohort_name,'Everybody') as cohort_name,
+nvl(cohort_value,'Any') as cohort_value,
+cohort_id,
+target.logical_operator,
+o.measurement_type,
+o.rule_group_type,
+o.rule_group_target_type,
+count(distinct item.id) as offer_targets
+from
+
+(Select 
+offer.global_target_amount as target_amount,
+offer.measurement_type,
+offer.comparison_sales_units,
+offer.rule_group_type,
+offer.rule_group_target_type,
+offer.rule_group_id,
+offer.offer,
+coalesce(date_send,offer.offer_date) as offer_date,
+offer.cms_campaign_id,
+case when target.sku is not null then 'SKU' 
+when target.category_1_id is not null then 'CATEGORY'
+when target.category_2_id is not null then 'CATEGORY'
+else 'Unknown' end as TARGET_TYPE,
+COALESCE(target.sku,to_char(target.category_1_id),to_char(target.category_2_id)) as offer_target_id, 
+COALESCE(sku.sku,brand.CATEGORY_FILE_IDENTIFIER,product.CATEGORY_FILE_IDENTIFIER) as offer_target,
+target.logical_operator,
+cohort.rule_group_id as cohort_rule_id,
+cohort.name as cohort_name,
+cohort.string_value as cohort_value,
+cohort.attribute_value_id as cohort_id
+from 
+
+(Select 
+offer.global_target_amount,
+offer.measurement_type,
+offer.comparison_sales_units,
+offer.rule_group_type,
+offer.rule_group_target_type,
+offer.id as rule_group_id,
+offer.name as offer,
+create_date as offer_date,
+offer.cms_campaign_id
+from mv_rule_group offer
+where create_date > sysdate - 60 
+and lower(offer.name)  not like '%test%' 
+and lower(offer.name)  not like '%reminder%' 
+--and lower(offer.name)  not like '%target%' 
+and lower(offer.name) not like '%motivate%' 
+) offer
+
+left join BT_B2BL_MV.MV_RULE_GROUP_TARGET_CONTAINER target on offer.rule_group_id = target.rule_group_id
+left join BT_B2BL_MV.MV_product_category brand ON NVL(target.category_1_id,0) = brand.id  AND brand.category_type = 'CATEGORY_1'
+left join BT_B2BL_MV.MV_product_category product ON NVL(target.category_2_id,0) = product.id AND product.category_type  = 'CATEGORY_2'
+left join BT_DW_DM.T_SKU_NAME sku ON NVL(target.sku,0) = sku.product_id  and offer.cms_campaign_id = sku.cms_campaign_id
+left join
+
+(Select
+name,
+cms_campaign_id,
+string_value,
+rule_group_id,
+a.attribute_value_id
+from BT_B2BL_MV.MV_BUSINESS_PROFILE_ATTRIBUTE a
+left join BT_B2BL_MV.MV_ATTRIBUTE c on a.attribute_id = c.id
+left join BT_B2BL_MV.MV_ATTRIBUTE_VALUE d on a.attribute_value_id = d.id
+left join mv_rule_group_attribute_value e on e.attribute_value_id=d.id
+where rule_group_id is not null
+group by 
+name,
+cms_campaign_id,
+string_value,
+rule_group_id,
+a.attribute_value_id
+) cohort on offer.rule_group_id = cohort.rule_group_id and offer.cms_campaign_id = cohort.cms_campaign_id
+left join v_b2b_offer_messages messages on offer.cms_campaign_id = messages.cms_campaign_id and offer.rule_group_id = messages.rule_group_id and message_type = 'TARGET' and messages.registered = 'Brandtone' 
+where COALESCE(target.sku,to_char(target.category_1_id),to_char(target.category_2_id))  is not null
+) o
+left join BT_B2BL_MV.MV_RULE_GROUP_TARGET_CONTAINER target on o.rule_group_id = target.rule_group_id and target.target_amount is not null
+left join BT_B2BL_MV.MV_RULE_GROUP_TARGET_CONTAINER item on o.rule_group_id = item.rule_group_id
+
+group by
+o.target_amount,
+o.rule_group_id,
+o.offer,
+o.offer_date,
+o.target_type,
+o.offer_target_id,
+coalesce(o.offer_target,o.offer_target_id),
+o.cms_campaign_id,
+cohort_rule_id,
+nvl(cohort_name,'Everybody'),
+nvl(cohort_value,'Any'),
+cohort_id,
+target.logical_operator,
+o.measurement_type,
+o.comparison_sales_units,
+o.rule_group_type,
+o.rule_group_target_type;
+
+   COMMENT ON MATERIALIZED VIEW "BT_DW_DM"."MV_B2B_OFFERS"  IS 'snapshot table for snapshot BT_DW_DM.MV_B2B_OFFERS';
