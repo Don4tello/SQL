@@ -1,0 +1,63 @@
+
+  CREATE OR REPLACE FORCE VIEW "BT_DW_DM"."V_B2B_TRADERLIST" ("BUSINESS_PROFILE_ID", "CMS_CAMPAIGN_ID", "CUSTOMER_REF", "VOUCHER", "TRADER", "MSISDN", "REGISTERED", "REGISTRATION_DATE", "OPERATOR", "CONTRACT_STATUS", "CAMPAIGN", "CLIENT", "COUNTRY", "STORE_TYPE", "REGION", "COUNTY", "AREA", "CITY", "MANAGER", "SUPERVISOR", "SALES_REP", "DISTRIBUTOR", "CAMPAIGN_SPEC_1", "CAMPAIGN_SPEC_2", "CAMPAIGN_SPEC_3", "REPORTABLE", "EXECUTIVE", "CAMPAIGN_START", "CAMPAIGN_END", "PROFILE_ID", "ROUTE", "ROUTE_NUMBER", "OPT_INS", "PROFILES") AS 
+  SELECT
+              bp.id AS business_profile_id,
+              bp.cms_campaign_id AS cms_campaign_id,
+              bp.customer_ref AS customer_ref,
+              bp.voucher AS voucher,
+              bp.profile_name AS trader,
+              bp.msisdn AS msisdn,
+              CASE when DM_PERMISSION = 'Y' THEN 'Brandtone' 
+              ELSE 'Non-Brandtone' END AS registered,
+              a.update_date as "REGISTRATION_DATE",
+                case when b.operator_name= '0' then 'Unknown' 
+  when b.operator_name is null then 'Unknown' 
+  else b.operator_name end as operator,
+  case when bp.contract_opt_in = 1 then 'Signed' else 'Not Signed' end as contract_status,
+  d.campaign_name as campaign,
+  d.CLIENT_NAME as client,
+  NVL(d.COUNTRY,'Not Provided') as country,
+  NVL(c.STORE_TYPE,'Not Provided') as Store_type,
+  NVL(c.REGION,'Not Provided') as Region,
+  NVL(c.COUNTY,'Not Provided') as County,
+  NVL(c.AREA,'Not Provided') as Area,
+  NVL(c.CITY,'Not Provided') as City,
+  NVL(c.MANAGER,'Not Provided') as Manager,
+  NVL(c.SUPERVISOR,'Not Provided') as Supervisor,
+  NVL(c.SALES_REP,'Not Provided') as Sales_rep,
+  NVL(c.DISTRIBUTOR,'Not Provided') as Distributor,
+  NVL(c.CAMPAIGN_SPEC_1,'Not Provided') as Campaign_spec_1,
+  NVL(c.CAMPAIGN_SPEC_2,'Not Provided') as Campaign_Spec_2,
+  NVL(c.CAMPAIGN_SPEC_3,'Not Provided') as Campaign_spec_3,
+  Case when e.F_TYPE = 'T' then 'No'
+       when e.F_TYPE = 'N' then 'Yes'
+       when e.F_TYPE = 'M' then 'Yes'
+       when e.F_TYPE is null then 'Yes'
+       else 'No' end as reportable,
+         NVL(c.EXECUTIVE,'Not Provided') as Executive,
+         d.Campaign_start,
+         d.campaign_end,
+         bp.profile_id,
+           NVL(c.Route,'Not Provided') as Route,
+  NVL(c.Route_number,'Not Provided') as Route_number,
+  case when DM_PERMISSION = 'Y' then 'Opt-In' 
+  when DM_PERMISSION = 'N' then 'Opt-Out'
+  else 'Not Responded' end as opt_ins,
+  case when e.profiles = 1 then 'Yes'
+  when e.profiles = 0 then 'No'
+  else 'Not Responded' end as PROFILE
+              FROM MV_business_profile bp
+              left join t_fact_entries a on a.profile_id = bp.profile_id and bp.cms_campaign_id = a.campaign_id and A.W_DWH_VALID = 1  and voucher_first_usage = 1 and (a.entrants = 1 or (class_id=6 and entrants=0))
+              left join T_DIM_OPERATORS b on b.operator_id = bp.operator_id
+              left join bt_dw_dm.v_b2b_trader_attributes  c on bp.id = c.business_profile_id and  bp.cms_campaign_id = c.cms_campaign_id
+              left join bt_dw_dm.v_b2bl_campaigns d on bp.cms_campaign_id = d.campaign_id
+              left join (
+Select a.profile_id,a.campaign_id,f_type,max(profiles) as profiles
+from t_fact_entries a
+inner join mv_business_profile b
+on a.profile_id = b.profile_id
+and a.campaign_id = b.cms_campaign_id 
+where class_Id <> 5
+group by a.profile_id,a.campaign_id,f_type) e on bp.profile_id=e.profile_id and e.campaign_id = bp.cms_campaign_id
+
+                            where bp.active = 1 and d.campaign_end > trunc(sysdate);
