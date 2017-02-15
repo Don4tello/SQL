@@ -1,0 +1,15 @@
+DECLARE
+   v_dyn_grant VARCHAR2(2000);
+BEGIN
+    -- MV Grant
+   FOR x IN (SELECT table_name FROM all_tables
+           where owner='BT_DWH')
+   LOOP
+      v_dyn_grant := 'GRANT SELECT ON '||x.table_name||' TO BT_DW_DM';
+      DBMS_OUTPUT.PUT_LINE(v_dyn_grant);
+
+      EXECUTE IMMEDIATE(v_dyn_grant);
+   END LOOP;
+END; 
+done
+for all tables
