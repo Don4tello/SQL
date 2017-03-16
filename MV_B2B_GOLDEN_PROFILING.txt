@@ -1,0 +1,106 @@
+
+  CREATE MATERIALIZED VIEW "BT_DW_DM"."MV_B2B_GOLDEN_PROFILING" ("CAMPAIGN_ID", "PROFILE_ID", "VOUCHER_CODE", "CATEGORY_1", "CATEGORY_2", "CATEGORY_3", "CATEGORY_4", "CATEGORY_5", "CATEGORY_OUTLOOK_1", "CATEGORY_OUTLOOK_2", "CATEGORY_OUTLOOK_3", "CATEGORY_OUTLOOK_4", "CATEGORY_OUTLOOK_5", "BRAND_1", "BRAND_2", "BRAND_3", "SEGMENTATION_QUESTION_1", "SEGMENTATION_QUESTION_2", "STORE_SIZE", "STORE_TURNOVER", "STORE_TYPE", "PROMOTION", "REWARD", "OUTLOOK", "Q_ADHOC_1", "Q_ADHOC_2", "Q_ADHOC_3", "Q_ADHOC_4")
+  ORGANIZATION HEAP PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 
+ NOCOMPRESS LOGGING
+  STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1
+  BUFFER_POOL DEFAULT FLASH_CACHE DEFAULT CELL_FLASH_CACHE DEFAULT)
+  TABLESPACE "BT_DW_DM_DATA" 
+  BUILD IMMEDIATE
+  USING INDEX 
+  REFRESH FORCE ON DEMAND
+  USING DEFAULT LOCAL ROLLBACK SEGMENT
+  USING ENFORCED CONSTRAINTS DISABLE QUERY REWRITE
+  AS (
+
+  SELECT campaign_id ,
+    profile_id ,
+    voucher_code ,
+    MAX(CATEGORY_1)              AS CATEGORY_1,
+    MAX(CATEGORY_2)              AS CATEGORY_2,
+    MAX(CATEGORY_3)              AS CATEGORY_3,
+    MAX(CATEGORY_4)              AS CATEGORY_4,
+    MAX(CATEGORY_5)              AS CATEGORY_5,
+    MAX(CATEGORY_OUTLOOK_1)      AS CATEGORY_OUTLOOK_1,
+    MAX(CATEGORY_OUTLOOK_2)      AS CATEGORY_OUTLOOK_2,
+    MAX(CATEGORY_OUTLOOK_3)      AS CATEGORY_OUTLOOK_3,
+    MAX(CATEGORY_OUTLOOK_4)      AS CATEGORY_OUTLOOK_4,
+    MAX(CATEGORY_OUTLOOK_5)      AS CATEGORY_OUTLOOK_5,
+    MAX(BRAND_1)                 AS BRAND_1,
+    MAX(BRAND_2)                 AS BRAND_2,
+    MAX(BRAND_3)                 AS BRAND_3,
+    MAX(SEGMENTATION_QUESTION_1) AS SEGMENTATION_QUESTION_1,
+    MAX(SEGMENTATION_QUESTION_2) AS SEGMENTATION_QUESTION_2,
+    MAX(STORE_SIZE)              AS STORE_SIZE,
+    MAX(STORE_TURNOVER)          AS STORE_TURNOVER,
+    MAX(STORE_TYPE)              AS STORE_TYPE,
+    MAX(PROMOTION)               AS PROMOTION,
+    MAX(REWARD)                  AS REWARD,
+    MAX(OUTLOOK)                 AS OUTLOOK,
+    MAX(Q_ADHOC_1)               AS Q_ADHOC_1,
+    MAX(Q_ADHOC_2)               AS Q_ADHOC_2,
+    MAX(Q_ADHOC_3)               AS Q_ADHOC_3,
+    MAX(Q_ADHOC_4)               AS Q_ADHOC_4
+  FROM
+    (SELECT campaign_id ,
+      profile_id ,
+      entry_id ,
+      voucher_code ,
+      question_text ,
+      answer_id ,
+      answer_text ,
+      TO_CHAR(questions) AS questions
+    FROM
+      (SELECT a.campaign_id ,
+              a.profile_id ,
+              a.entry_id ,
+              e.voucher_code,
+              b.question_text ,
+              a.answer_id ,
+              c.report_label_ca AS answer_text ,
+              a.entries ,
+              a.create_date_local ,
+              b.questions
+       FROM (SELECT campaign_id ,
+                    profile_id,
+                    entry_id,
+                    answer_id,
+                    campaign_question_id,
+                    entries,
+                    create_date_local,
+                    ROW_NUMBER() OVER (PARTITION BY campaign_id, profile_id, question_id ORDER BY interaction_count_campaign DESC) rn
+             FROM t_fact_responses_summary
+             ) a
+       JOIN t_fact_entries e
+         ON a.rn = 1 
+        AND a.entry_id = e.entry_id 
+       JOIN t_dim_business_profiles bp 
+         ON e.profile_id = bp.profile_id 
+        AND e.campaign_id = bp.campaign_id 
+        AND e.voucher_code = bp.voucher
+       JOIN (SELECT campaign_id,
+                    campaign_question_id,
+                    report_label_cq   AS question_text ,
+                    question_genre_id AS questions
+             FROM t_dim_questions
+             WHERE question_genre_id IN (16,17,18,19,20,21,22,23,24,25,26,27,28,30,31,32,33,34,35,36,37,38,39,40,41)
+            ) b
+         ON a.campaign_question_id = b.campaign_question_id
+        AND a.campaign_id = b.campaign_id
+       JOIN t_dim_answers c
+         ON a.answer_id = c.answer_id  and TRIM(UPPER(c.description)) <> 'MORE'
+        AND c.campaign_question_id = b.campaign_question_id
+      JOIN t_dim_campaigns m
+        ON a.campaign_id = m.campaign_id and m.sales_file = 1
+
+
+      )
+    ) pivot(MAX(answer_text) FOR questions IN ('16' AS CATEGORY_1, '17' AS CATEGORY_2, '18' AS CATEGORY_3, '19' AS CATEGORY_4, '20' AS CATEGORY_5, '21' AS CATEGORY_OUTLOOK_1, '22' AS CATEGORY_OUTLOOK_2, '23' AS CATEGORY_OUTLOOK_3, '24' AS CATEGORY_OUTLOOK_4, '25' AS CATEGORY_OUTLOOK_5, '26' AS BRAND_1, '27' AS BRAND_2, '28' AS BRAND_3, '30' AS SEGMENTATION_QUESTION_1, '31' AS SEGMENTATION_QUESTION_2, '32' AS STORE_SIZE, '33' AS STORE_TURNOVER, '34' AS STORE_TYPE, '35' AS PROMOTION, '36' AS REWARD, '37' AS OUTLOOK, '38' AS Q_ADHOC_1, '39' AS Q_ADHOC_2, '40' AS Q_ADHOC_3, '41' AS Q_ADHOC_4 ))
+  GROUP BY campaign_id ,
+    profile_id,
+    voucher_code
+    
+    
+    );
+
+   COMMENT ON MATERIALIZED VIEW "BT_DW_DM"."MV_B2B_GOLDEN_PROFILING"  IS 'snapshot table for snapshot BT_DW_DM.MV_B2B_GOLDEN_PROFILING';

@@ -1,0 +1,183 @@
+
+  CREATE MATERIALIZED VIEW "BT_DW_DM"."MV_SALES" ("CMS_CAMPAIGN_ID", "BUSINESS_PROFILE_ID", "SALE_DATE", "SKU", "DIVISION", "SUBDIVISION", "BRAND", "CATEGORY", "RANGE", "PRODUCT", "VALUE", "VOLUME", "PRODUCT_ID", "INVOICE", "SEGMENTATION", "CURRENCY", "CUMULATIVE_VALUE", "CUMULATIVE_VOLUME")
+  ORGANIZATION HEAP PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 
+ NOCOMPRESS LOGGING
+  STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1
+  BUFFER_POOL DEFAULT FLASH_CACHE DEFAULT CELL_FLASH_CACHE DEFAULT)
+  TABLESPACE "BT_DW_DM_DATA" 
+  BUILD IMMEDIATE
+  USING INDEX 
+  REFRESH COMPLETE ON DEMAND START WITH sysdate+0 NEXT (TRUNC(SYSDATE+1) + 5/24)
+  USING DEFAULT LOCAL ROLLBACK SEGMENT
+  USING ENFORCED CONSTRAINTS DISABLE QUERY REWRITE
+  AS SELECT CAMPAIGN_ID ,
+  BUSINESS_PROFILE_ID ,
+  sale_date ,
+  SKU ,
+  DIVISION ,
+  SUBDIVISION ,
+  BRAND ,
+  CATEGORY ,
+  RANGE ,
+  PRODUCT ,
+  value ,
+  volume ,
+  product_id ,
+  invoice ,
+  CASE
+    WHEN traders <= total_traders * 25 / 100
+    THEN 'Top 25%'
+    WHEN traders <= total_traders* 75 / 100
+    THEN '25%-75%'
+    ELSE 'Bottom 25%'
+  END AS Segmentation ,
+  currency ,
+     cumulative_trader as cumulative_value
+     ,cumulative_volume
+     
+FROM
+  (SELECT CAMPAIGN_ID ,
+    BUSINESS_PROFILE_ID ,
+    sale_date ,
+    SKU ,
+    DIVISION ,
+    SUBDIVISION ,
+    BRAND ,
+    CATEGORY ,
+    RANGE ,
+    PRODUCT ,
+    value ,
+    units AS volume ,
+    product_id ,
+    invoice ,
+    MAX(traders) KEEP (DENSE_RANK LAST
+  ORDER BY traders) OVER (PARTITION BY campaign_id) total_traders ,
+    traders ,
+    cumulative_trader ,
+    cumulative_volume,
+    currency
+  FROM
+    (SELECT CAMPAIGN_ID ,
+      BUSINESS_PROFILE_ID ,
+      sale_date ,
+      SKU ,
+      DIVISION ,
+      SUBDIVISION ,
+      BRAND ,
+      CATEGORY ,
+      RANGE ,
+      PRODUCT ,
+      value ,
+      units ,
+      product_id ,
+      invoice ,
+      Cumulative_trader ,
+      cumulative_volume,
+      dense_rank() OVER (PARTITION BY CAMPAIGN_ID ORDER BY cumulative_trader DESC) traders ,
+      currency
+    FROM
+      (SELECT a.CAMPAIGN_ID,
+        a.BUSINESS_PROFILE_ID,
+        a.sale_date,
+        a.SKU,
+        a.DIVISION ,
+        a.SUBDIVISION ,
+        a.BRAND ,
+        a.CATEGORY ,
+        a.RANGE ,
+        a.PRODUCT ,
+        value ,
+        units ,
+        product_id ,
+        invoice ,
+        SUM(value) OVER (PARTITION BY business_profile_id) AS Cumulative_trader ,
+                SUM(units) OVER (PARTITION BY business_profile_id) AS Cumulative_volume ,
+        currency
+      FROM
+        (SELECT c.CAMPAIGN_ID,
+          c.BUSINESS_PROFILE_ID,
+          c.sale_date,
+          d.SKU,
+          d.DIVISION ,
+          d.SUBDIVISION ,
+          d.BRAND ,
+          d.CATEGORY ,
+          d.RANGE ,
+          d.PRODUCT ,
+          REPLACE(TO_CHAR(c.sale_date),'-','')
+          ||business_profile_id AS invoice ,
+          SUM(c.value)          AS value ,
+          SUM(c.units)          AS units ,
+          c.sku                 AS product_id ,
+          campaigns.currency
+        FROM 
+        (
+        Select 
+        CAMPAIGN_ID,
+        BUSINESS_PROFILE_ID,
+        SALE_DATE,
+        SKU,
+        VALUE,
+        UNITS
+        from mv_daily_sale
+--        where rownum < 10
+        UNION
+        Select 
+        2532 as CAMPAIGN_ID,
+        BUSINESS_PROFILE_ID,
+        SALE_DATE,
+        TO_CHAR(SKU) as SKU,
+        UNITS,
+        VALUE1 as VALUE
+        
+        from aa_data_dba_final
+--        where rownum < 10
+        ) c
+        LEFT JOIN T_SKU_NAME d
+        ON c.sku         =d.product_id
+        AND c.campaign_id=d.cms_campaign_id
+        LEFT JOIN t_dim_campaigns campaigns
+        ON c.campaign_id=campaigns.campaign_id
+        WHERE EXISTS
+          ( SELECT DISTINCT b.cms_campaign_id
+          FROM v_b2b_traderlist b
+          WHERE c.campaign_id=b.cms_campaign_id
+          )
+          
+        GROUP BY c.CAMPAIGN_ID,
+          c.BUSINESS_PROFILE_ID,
+          c.sale_date,
+          d.SKU,
+          d.DIVISION ,
+          d.SUBDIVISION ,
+          d.BRAND ,
+          d.CATEGORY ,
+          d.RANGE ,
+          d.PRODUCT ,
+          c.sku ,
+          campaigns.currency 
+        ) a
+      )
+    )
+  GROUP BY CAMPAIGN_ID ,
+    BUSINESS_PROFILE_ID ,
+    sale_date ,
+    SKU ,
+    DIVISION ,
+    SUBDIVISION ,
+    BRAND ,
+    CATEGORY ,
+    RANGE ,
+    PRODUCT ,
+    value ,
+    units ,
+    product_id ,
+    invoice ,
+    traders ,
+    currency ,
+    cumulative_trader,
+    cumulative_volume
+  );
+
+   COMMENT ON MATERIALIZED VIEW "BT_DW_DM"."MV_SALES"  IS 'snapshot table for snapshot BT_DW_DM.MV_SALES';

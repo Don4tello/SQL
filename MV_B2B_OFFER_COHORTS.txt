@@ -1,0 +1,36 @@
+
+  CREATE MATERIALIZED VIEW "BT_DW_DM"."MV_B2B_OFFER_COHORTS" ("TRADER_COHORT", "RULE_GROUP_ID", "REGISTERED", "CMS_CAMPAIGN_ID", "OFFER")
+  ORGANIZATION HEAP PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 
+ NOCOMPRESS LOGGING
+  STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1
+  BUFFER_POOL DEFAULT FLASH_CACHE DEFAULT CELL_FLASH_CACHE DEFAULT)
+  TABLESPACE "BT_DW_DM_DATA" 
+  BUILD IMMEDIATE
+  USING INDEX 
+  REFRESH COMPLETE ON DEMAND START WITH sysdate+0 NEXT (TRUNC(SYSDATE+1) + 4/24)
+  USING DEFAULT LOCAL ROLLBACK SEGMENT
+  USING ENFORCED CONSTRAINTS DISABLE QUERY REWRITE
+  AS select 
+count(distinct a.business_profile_id) as trader_cohort,
+e.rule_group_id,
+t.registered,
+g.cms_campaign_id,
+g.name as offer
+from BT_B2BL_MV.MV_BUSINESS_PROFILE_ATTRIBUTE a
+inner join BT_B2BL_MV.MV_ATTRIBUTE c on a.attribute_id = c.id
+inner join BT_B2BL_MV.MV_ATTRIBUTE_VALUE d on a.attribute_value_id = d.id
+inner join mv_rule_group_attribute_value e on e.attribute_value_id=d.id
+inner join mv_rule_group g on e.rule_group_id = g.id
+inner join v_b2b_traderlist t on a.business_profile_id = t.business_profile_id and g.cms_campaign_id = t.cms_campaign_id
+where e.rule_group_id in (
+Select distinct rule_group_id
+from MV_B2B_OFFERS
+)
+
+group by e.rule_group_id,
+t.registered,
+g.cms_campaign_id,
+g.name;
+
+   COMMENT ON MATERIALIZED VIEW "BT_DW_DM"."MV_B2B_OFFER_COHORTS"  IS 'snapshot table for snapshot BT_DW_DM.MV_B2B_OFFER_COHORTS';

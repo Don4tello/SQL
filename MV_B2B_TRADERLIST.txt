@@ -1,0 +1,110 @@
+
+  CREATE MATERIALIZED VIEW "BT_DW_DM"."MV_B2B_TRADERLIST" ("BUSINESS_PROFILE_ID", "CMS_CAMPAIGN_ID", "CUSTOMER_REF", "VOUCHER", "TRADER", "MSISDN", "REGISTERED", "REGISTRATION_DATE", "OPERATOR", "CONTRACT_STATUS", "CAMPAIGN", "CLIENT", "COUNTRY", "STORE_TYPE", "REGION", "COUNTY", "AREA", "CITY", "MANAGER", "SUPERVISOR", "SALES_REP", "DISTRIBUTOR", "CAMPAIGN_SPEC_1", "CAMPAIGN_SPEC_2", "CAMPAIGN_SPEC_3", "REPORTABLE", "EXECUTIVE", "CAMPAIGN_START", "CAMPAIGN_END", "PROFILE_ID", "ROUTE", "ROUTE_NUMBER", "OPT_INS", "PROFILES", "PROFILING_REWARD", "CURRENCY", "CHANNEL_TYPE", "CAMPAIGN_SPEC_4", "ENABLED_TRADER")
+  ORGANIZATION HEAP PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 
+ NOCOMPRESS LOGGING
+  STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1
+  BUFFER_POOL DEFAULT FLASH_CACHE DEFAULT CELL_FLASH_CACHE DEFAULT)
+  TABLESPACE "BT_DW_DM_DATA" 
+  BUILD IMMEDIATE
+  USING INDEX 
+  REFRESH COMPLETE ON DEMAND START WITH sysdate+0 NEXT (TRUNC(SYSDATE+1) + 3/24)
+  USING DEFAULT LOCAL ROLLBACK SEGMENT
+  USING ENFORCED CONSTRAINTS DISABLE QUERY REWRITE
+  AS SELECT bp.business_profile_id,
+    bp.campaign_id AS cms_campaign_id,
+    bp.customer_ref    AS customer_ref,
+    bp.voucher         AS voucher,
+    bp.business_profile_name    AS trader,
+    bp.msisdn          AS msisdn,
+    CASE
+      WHEN DM_PERMISSION = 'Y'
+      THEN 'Brandtone'
+      ELSE 'Non-Brandtone'
+    END           AS registered,
+    bp.REGISTRATION_DATE,
+    CASE
+      WHEN b.operator_name= '0'
+      THEN 'Unknown'
+      WHEN b.operator_name IS NULL
+      THEN 'Unknown'
+      ELSE b.operator_name
+    END AS operator,
+    CASE
+      WHEN bp.contract_opt_in = 1
+      THEN 'Signed'
+      ELSE 'Not Signed'
+    END                                   AS contract_status,
+    d.campaign_desc                       AS campaign,
+    d.CLIENT_DESC                         AS client,
+    d.COUNTRY_DESC                        AS country,
+    bp.Store_type,
+    bp.Region,
+    bp.County,
+    bp.Area,
+    bp.City,
+    bp.Manager,
+    bp.Supervisor,
+    bp.Sales_rep,
+    bp.Distributor,
+    bp.Campaign_spec_1,
+    bp.Campaign_Spec_2,
+    bp.Campaign_spec_3,
+    CASE
+      WHEN bp.F_TYPE = 'T'
+      THEN 'No'
+      WHEN bp.F_TYPE = 'N'
+      THEN 'Yes'
+      WHEN bp.F_TYPE = 'M'
+      THEN 'Yes'
+      WHEN bp.F_TYPE IS NULL
+      THEN 'Yes'
+      ELSE 'No'
+    END                             AS reportable,
+    bp.Executive,
+    trunc(d.start_date_local) as campaign_start,
+    trunc(d.end_date_local) as campaign_end,
+    bp.profile_id,
+    bp.Route,
+    bp.Route_number,
+    CASE
+      WHEN bp.DM_PERMISSION = 'Y'
+      THEN 'Opt-In'
+      WHEN DM_PERMISSION = 'N'
+      THEN 'Opt-Out'
+      ELSE 'Not Responded'
+    END AS opt_ins,
+    CASE
+      WHEN e.profiles = 1
+      THEN 'Yes'
+      ELSE 'No'
+    END AS PROFILE,
+    e.reward_value as PROFILING_REWARD,
+    d.Currency,
+    bp.CHANNEL_TYPE,
+    bp.CAMPAIGN_SPEC_4,
+    case when bp.ACTIVE = 1 then 'Enabled' when bp.ACTIVE=0 then 'Disabled' else null end as enabled_trader
+  FROM t_dim_business_profiles bp
+  LEFT JOIN V_DIM_OPERATORS b
+  ON b.operator_id = bp.operator_id
+  LEFT JOIN bt_dw_dm.t_dim_campaigns d
+  ON bp.campaign_id = d.campaign_id
+  LEFT JOIN
+    (
+    
+    
+
+Select 
+a.campaign_id,a.profile_id,a.profiles,voucher,business_profile_id,Sum(rt.reward_Value) as reward_value
+from t_dim_business_profiles bp
+inner join t_fact_entries a on bp.profile_id=a.profile_id and bp.voucher=a.voucher_code and bp.campaign_id = a.campaign_id
+left join t_fact_rewards b on a.entry_id = b.entry_id 
+left join mv_rewards_types rt on rt.id=b.reward_type_id
+where a.w_call_complete = 1 group by 
+a.campaign_id,a.profile_id,a.profiles,voucher,business_profile_id  
+
+    ) e ON bp.profile_id=e.profile_id
+  AND e.campaign_id     = bp.campaign_id
+  AND e.voucher=bp.voucher;
+
+   COMMENT ON MATERIALIZED VIEW "BT_DW_DM"."MV_B2B_TRADERLIST"  IS 'snapshot table for snapshot BT_DW_DM.MV_B2B_TRADERLIST';

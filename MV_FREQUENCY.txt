@@ -1,0 +1,111 @@
+
+  CREATE MATERIALIZED VIEW "BT_DW_DM"."MV_FREQUENCY" ("CREATE_DATE", "CAMPAIGN_ID", "PROFILE_ID", "ENTRY_ID", "COUNTRY", "CLIENT", "CAMPAIGN", "CAMPAIGN_END_DATE", "REGION", "DM_PERMISSION", "PRODUCT", "REWARD", "REWARD_LABEL", "REWARD_METHOD", "REWARD_VALUE")
+  ORGANIZATION HEAP PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 
+ NOCOMPRESS LOGGING
+  STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1
+  BUFFER_POOL DEFAULT FLASH_CACHE DEFAULT CELL_FLASH_CACHE DEFAULT)
+  TABLESPACE "BT_DW_DM_DATA" 
+  BUILD IMMEDIATE
+  USING INDEX 
+  REFRESH COMPLETE ON DEMAND START WITH sysdate+0 NEXT (TRUNC(SYSDATE+1) + 6/24)
+  USING DEFAULT LOCAL ROLLBACK SEGMENT
+  USING ENFORCED CONSTRAINTS DISABLE QUERY REWRITE
+  AS WITH profiles_regions
+AS
+    (SELECT  /*+ materialize */ 
+      RG.PROFILE_ID,
+      RG.CAMPAIGN_ID ,
+      RE.REGION_NAME
+    FROM t_dim_campaigns ca
+    INNER JOIN S_FACT_ENTRIES_DETAIL RG
+    ON CA.CAMPAIGN_ID     = RG.CAMPAIGN_ID
+    AND RG.PROFILES       = 1
+    AND W_CAMPAIGN_ACTIVE = 1
+    AND F_TYPE            = 'N'
+    INNER JOIN MV_REGION RE
+    ON RG.REGION_ID = RE.ID
+    WHERE TRUNC(end_date) BETWEEN sysdate - 15 AND sysdate
+    ) 
+
+  SELECT 
+  TRUNC(FE.CREATE_DATE_LOCAL) CREATE_DATE ,
+    P.CAMPAIGN_ID ,
+    P.PROFILE_ID ,
+    FE.ENTRY_ID ,
+    CA.COUNTRY_DESC ,
+    CA.CLIENT_DESC ,
+    CA.CAMPAIGN_DESC ,
+    CA.END_DATE ,
+    COALESCE(R.REGION_NAME,'Unknown') ,
+    p.DM_PERMISSION 
+    ,
+    PR.PRODUCT_DESC 
+    ,
+    COALESCE(rt.Reward,'No Reward') ,
+    COALESCE(rt.Reward_Label,'No Reward') ,
+    COALESCE(rt.Reward_method,'No Reward') ,
+    COALESCE(rw.REWARD_VALUE,0)
+  FROM t_dim_campaigns ca
+  INNER JOIN MV_CAMPAIGN_PROFILES P
+  ON ca.campaign_id = p.campaign_id
+  AND F_TYPE        = 'N'
+
+  LEFT JOIN profiles_regions
+ r ON r.profile_id=p.profile_id
+  AND p.campaign_id   = r.campaign_id
+
+
+  INNER JOIN S_FACT_ENTRIES_DETAIL FE
+  ON FE.CAMPAIGN_ID     = P.CAMPAIGN_ID
+  AND FE.PROFILE_ID     = P.PROFILE_ID
+  AND FE.F_TYPE         = 'N'
+  AND ENTRIES           = 1
+  AND W_CAMPAIGN_ACTIVE = 1
+  LEFT JOIN S_FACT_REWARDS_DETAIL rw
+  ON FE.ENTRY_ID        = rw.ENTRY_ID
+  AND RW.REWARD_STATUS <> -2
+  AND RW.REPORTABLE     = 'Y'
+  LEFT JOIN
+    (SELECT reward_type_id,
+      Bundle_type
+      ||' '
+      || Bundle_Size AS Reward,
+      Reward_Label,
+      Reward_method
+    FROM
+      (SELECT
+        CASE
+          WHEN reward_method = 'Data Bundle'
+          AND upper(reward_label) LIKE '%MB%'
+          THEN 'MB'
+          WHEN reward_method = 'Data Bundle'
+          AND upper(reward_label) LIKE '%GB%'
+          THEN 'GB'
+          WHEN lower(reward_method) LIKE '%airtime%'
+          THEN 'Airtime'
+          WHEN reward_method = 'Coupon'
+          THEN 'Coupon'
+          WHEN reward_method = 'M-Pesa'
+          THEN 'M-Pesa'
+          WHEN reward_method = 'SMS Bundle'
+          THEN 'SMS Bundle'
+          ELSE reward_method
+        END                                    AS Bundle_Type ,
+        REGEXP_REPLACE(reward_label, '\D', '') AS Bundle_Size ,
+        REWARD_LABEL ,
+        reward_method ,
+        id AS reward_type_id
+      FROM MV_REWARDS_TYPES
+      )
+    ) RT
+  ON rt.reward_type_id = rw.reward_type_id
+  LEFT JOIN T_DIM_PRODUCTS PR
+  ON PR.PRODUCT_ID = FE.PRODUCT_ID
+  WHERE TRUNC(end_date) BETWEEN sysdate - 30 AND sysdate
+--  AND rownum < 100
+    --);
+
+--   COMMENT ON MATERIALIZED VIEW "BT_DW_DM"."MV_FREQUENCY"  IS 'snapshot table for snapshot BT_DW_DM.MV_FREQUENCY';;
+
+   COMMENT ON MATERIALIZED VIEW "BT_DW_DM"."MV_FREQUENCY"  IS 'snapshot table for snapshot BT_DW_DM.MV_FREQUENCY';

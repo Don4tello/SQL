@@ -1,0 +1,135 @@
+
+  CREATE MATERIALIZED VIEW "BT_DW_DM"."MV_PROFILING_SUMMARY" ("CAMPAIGN_ID", "PROFILE_ID", "QUESTION_1", "QUESTION_2", "QUESTION_3", "QUESTION_4", "QUESTION_5", "QUESTION_6", "QUESTION_7", "QUESTION_8", "QUESTION_9", "QUESTION_10", "QUESTION_11", "QUESTION_12", "QUESTION_13", "QUESTION_14", "QUESTION_15", "QUESTION_16", "QUESTION_17", "QUESTION_18", "QUESTION_19", "QUESTION_20", "QUESTION_21", "QUESTION_22", "QUESTION_23", "QUESTION_24", "QUESTION_25", "QUESTION_26", "QUESTION_27", "QUESTION_28", "QUESTION_29", "QUESTION_30")
+  ORGANIZATION HEAP PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 
+ NOCOMPRESS LOGGING
+  STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1
+  BUFFER_POOL DEFAULT FLASH_CACHE DEFAULT CELL_FLASH_CACHE DEFAULT)
+  TABLESPACE "BT_DW_DM_DATA" 
+  BUILD IMMEDIATE
+  USING INDEX 
+  REFRESH COMPLETE ON DEMAND START WITH sysdate+0 NEXT (TRUNC(SYSDATE+1) + 7/24)
+  USING DEFAULT LOCAL ROLLBACK SEGMENT
+  USING ENFORCED CONSTRAINTS DISABLE QUERY REWRITE
+  AS Select 
+     campaign_id 
+     ,profile_id 
+     ,max(question_1) as question_1
+     ,max(question_2) as question_2
+     ,max(question_3) as question_3
+     ,max(question_4) as question_4 
+     ,max(question_5) as question_5
+     ,max(question_6) as question_6
+     ,max(question_7) as question_7
+     ,max(question_8) as question_8
+     ,max(question_9) as question_9
+     ,max(question_10) as question_10
+     ,max(question_11) as question_11
+     ,max(question_12) as question_12
+     ,max(question_13) as question_13
+     ,max(question_14) as question_14
+     ,max(question_15) as question_15
+     ,max(question_16) as question_16
+     ,max(question_17) as question_17
+     ,max(question_18) as question_18
+     ,max(question_19) as question_19
+     ,max(question_20) as question_20
+     ,max(question_21) as question_21
+     ,max(question_22) as question_22
+     ,max(question_23) as question_23
+     ,max(question_24) as question_24
+     ,max(question_25) as question_25
+     ,max(question_26) as question_26
+     ,max(question_27) as question_27
+     ,max(question_28) as question_28
+     ,max(question_29) as question_29
+     ,max(question_30) as question_30
+     from
+
+(
+
+SELECT 
+     campaign_id 
+     ,profile_id 
+     ,entry_id 
+     ,question_id 
+     ,question_text 
+     ,answer_id 
+     ,answer_text 
+     ,inter_count
+     ,to_char(questions) as questions
+ FROM (SELECT a.campaign_id 
+           ,a.profile_id 
+           ,a.entry_id 
+           ,a.question_id 
+           ,b.question_text 
+           ,a.answer_id 
+           , c.report_label_ca AS answer_text 
+           ,a.entries 
+           ,a.create_date_local 
+           ,b.questions
+           ,ROW_NUMBER() OVER (PARTITION BY a.campaign_id, a.profile_id, a.question_id ORDER BY a.interaction_count_campaign DESC) inter_count 
+        FROM bt_dw_etl.t_fact_responses_summary a 
+          INNER JOIN 
+          (Select 
+question_id, campaign_id,campaign_question_id,report_label_cq AS question_text ,
+dense_Rank() OVER (PARTITION BY campaign_id ORDER BY campaign_question_id Asc ) questions 
+from 
+bt_dw_etl.t_dim_questions
+    WHERE question_genre_id NOT IN (1,8) 
+)
+          
+          b 
+                                          ON NVL(a.campaign_question_id,a.question_id) = NVL2(a.campaign_question_id,b.campaign_question_id,b.question_id) 
+                 AND a.campaign_id = b.campaign_id 
+          INNER JOIN bt_dw_etl.t_dim_answers c
+                                ON a.answer_id = c.answer_id 
+                 AND c.campaign_question_id = b.campaign_question_id 
+          INNER JOIN bt_dw_etl.t_dim_campaigns m 
+                                          ON a.campaign_id = m.campaign_id 
+        WHERE TRIM(UPPER(c.description)) <> 'MORE'       
+--        AND m.campaign_id = 2181
+--        and trunc(create_date_local) > sysdate - 720
+        )
+where inter_count = 1
+        )
+
+        
+        
+pivot(max(answer_text) for questions in 
+('1' as question_1,
+'2' as question_2,
+'3' as question_3,
+'4' as question_4,
+'5' as question_5,
+'6' as question_6,
+'7' as question_7,
+'8' as question_8,
+'9' as question_9,
+'10' as question_10,
+'11' as question_11,
+'12' as question_12,
+'13' as question_13,
+'14' as question_14,
+'15' as question_15,
+'16' as question_16,
+'17' as question_17,
+'18' as question_18,
+'19' as question_19,
+'20' as question_20,
+'21' as question_21,
+'22' as question_22,
+'23' as question_23,
+'24' as question_24,
+'25' as question_25,
+'26' as question_26,
+'27' as question_27,
+'28' as question_28,
+'29' as question_29,
+'30' as question_30
+))
+
+group by      campaign_id 
+     ,profile_id;
+
+   COMMENT ON MATERIALIZED VIEW "BT_DW_DM"."MV_PROFILING_SUMMARY"  IS 'snapshot table for snapshot BT_DW_DM.MV_PROFILING_SUMMARY';

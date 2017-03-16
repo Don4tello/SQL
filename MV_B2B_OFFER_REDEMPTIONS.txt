@@ -1,0 +1,113 @@
+
+  CREATE MATERIALIZED VIEW "BT_DW_DM"."MV_B2B_OFFER_REDEMPTIONS" ("CUSTOMER_REF", "VOUCHER", "TRADER", "MSISDN", "REGISTERED", "REGISTRATION_DATE", "OPERATOR", "CONTRACT_STATUS", "CAMPAIGN", "CLIENT", "COUNTRY", "STORE_TYPE", "REGION", "COUNTY", "AREA", "CITY", "MANAGER", "SUPERVISOR", "SALES_REP", "DISTRIBUTOR", "CAMPAIGN_SPEC_1", "CAMPAIGN_SPEC_2", "CAMPAIGN_SPEC_3", "REPORTABLE", "EXECUTIVE", "BUSINESS_PROFILE_ID", "CMS_CAMPAIGN_ID", "COMPLIANT", "TARGET_REACHED", "OFFER", "COHORT_VALUE", "OFFER_CREATED", "ROUTE", "ROUTE_NUMBER", "OFFER_TYPE", "PROFILE_ID", "RULE_GROUP_ID", "REWARD_VALUE", "REWARD_LABEL", "DM_PERMISSION_WHEN_RUN", "SP_START_DATE", "SP_END_DATE", "CURRENCY", "TARGET_MESSAGE", "CAMPAIGN_SPEC_4", "CHANNEL_TYPE", "ENABLED_TRADER")
+  ORGANIZATION HEAP PCTFREE 10 PCTUSED 40 INITRANS 1 MAXTRANS 255 
+ NOCOMPRESS LOGGING
+  STORAGE(INITIAL 65536 NEXT 1048576 MINEXTENTS 1 MAXEXTENTS 2147483645
+  PCTINCREASE 0 FREELISTS 1 FREELIST GROUPS 1
+  BUFFER_POOL DEFAULT FLASH_CACHE DEFAULT CELL_FLASH_CACHE DEFAULT)
+  TABLESPACE "BT_DW_DM_DATA" 
+  BUILD IMMEDIATE
+  USING INDEX 
+  REFRESH COMPLETE ON DEMAND
+  USING DEFAULT LOCAL ROLLBACK SEGMENT
+  USING TRUSTED CONSTRAINTS DISABLE QUERY REWRITE
+  AS SELECT 
+  CUSTOMER_REF,
+  VOUCHER,
+  TRADER,
+  MSISDN,
+  b.REGISTERED,
+  REGISTRATION_DATE,
+  OPERATOR,
+  CONTRACT_STATUS,
+  CAMPAIGN,
+  CLIENT,
+  a.COUNTRY,
+  STORE_TYPE,
+  REGION,
+  COUNTY,
+  AREA,
+  CITY,
+  MANAGER,
+  SUPERVISOR,
+  SALES_REP,
+  DISTRIBUTOR,
+  CAMPAIGN_SPEC_1,
+  CAMPAIGN_SPEC_2,
+  CAMPAIGN_SPEC_3,
+  REPORTABLE,
+  EXECUTIVE,
+  a.business_profile_id,
+  a.cms_campaign_id,
+  a.compliant,
+  a.target_reached,
+  a.offer,
+  nvl(string_value, 'Any') as cohort_value,
+  offer_date as offer_created,
+  ROUTE,
+  ROUTE_NUMBER,
+  case when lower(a.offer) like '%test%' then 'Test' else 'Offer' end as offer_type,
+  PROFILE_ID,
+  a.rule_group_id,
+  a.reward_value,
+  a.reward_label,
+  a.dm_permission_when_run,
+  a.sp_start_date,
+  a.sp_end_date,
+  c.CURRENCY,
+  m.target_message_body,
+    CAMPAIGN_SPEC_4,
+    CHANNEL_TYPE,
+    ENABLED_TRADER
+FROM 
+(
+Select 
+c.name,
+c.id as rule_group_id,
+a.rule_product_id,
+a.business_profile_id,
+a.compliant,
+a.target_reached,
+a.dm_permission_when_run,
+sp.start_date as sp_start_date,
+sp.end_date as sp_end_date,
+c.name as offer,
+atv.string_value,
+c.cms_campaign_id,
+trunc(c.create_date) as offer_date,
+rv.cms_reward_type_id,
+rv.reward_value,
+rv.reward_label,
+rv.country
+from 
+MV_BUSINESS_PROFILE_PRODUCT a 
+inner join mv_rule_reward b on a.rule_product_id=b.rule_product_id
+inner join mv_rule_group c on c.id=b.rule_group_id
+left join mv_sales_period sp on c.cms_campaign_id = sp.cms_campaign_id and c.sales_period_id = sp.id 
+left join mv_rule_group_attribute_value e on e.rule_group_id=c.id
+left join MV_BUSINESS_PROFILE_ATTRIBUTE bpa on e.attribute_value_id = bpa.attribute_value_id and a.business_profile_id = bpa.business_profile_id
+left join mv_attribute att on att.id = bpa.attribute_id
+left join mv_attribute_value atv on bpa.attribute_value_id = atv.id
+left join (
+Select 
+rr.rule_product_id,ro.business_profile_Id, ro.cms_reward_type_id, ro.reward_status_type,cc.country,rr.rule_group_id,rt.reward_label,Sum(reward_value) as reward_value
+from mv_rule_reward rr
+left join mv_reward_out ro on ro.rule_product_id = rr.rule_product_id
+left join mv_rewards_types rt on rt.id=ro.cms_reward_type_id
+left join mv_country_codes cc on rt.country_code_id=cc.id 
+group by rr.rule_product_id, ro.business_profile_Id, ro.cms_reward_type_id, ro.reward_status_type,cc.country,rr.rule_group_id,rt.reward_label
+
+
+) 
+rv on a.business_profile_id = rv.business_profile_id and a.rule_product_id = rv.rule_product_id and c.id=rv.rule_group_id
+
+) a
+
+inner join V_B2B_TRADERLIST b on a.business_profile_id = b.business_profile_id and a.cms_campaign_id = b.cms_campaign_id
+left join t_dim_campaigns c on a.cms_campaign_id = c.campaign_id
+left join (Select rule_group_id,target_message_body
+from bt_dwh.t_dim_rules
+where rule_type = 'TARGET_MESSAGE' and rule_status = 'COMPLETE'
+) m on a.rule_group_id = m.rule_group_id;
+
+   COMMENT ON MATERIALIZED VIEW "BT_DW_DM"."MV_B2B_OFFER_REDEMPTIONS"  IS 'snapshot table for snapshot BT_DW_DM.MV_B2B_OFFER_REDEMPTIONS';
